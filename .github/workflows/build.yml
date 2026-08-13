@@ -6,7 +6,7 @@ on:
       version:
         description: "Version label"
         required: false
-        default: "custom-v4-nsb"
+        default: "custom-v4.5-nsb"
         type: string
 
   push:
@@ -16,6 +16,7 @@ on:
       - "combined_refactor/**"
       - "tools/cfdata_custom_patch.py"
       - "tools/cfdata_nsb_patch.py"
+      - "tools/cfdata_v45_ui_history_patch.py"
       - ".github/workflows/build.yml"
 
 permissions:
@@ -56,11 +57,12 @@ jobs:
           LANG: "C.UTF-8"
           LC_ALL: "C.UTF-8"
         run: |
-          python3 -m py_compile tools/cfdata_custom_patch.py tools/cfdata_nsb_patch.py tools/cfdata_nsb_field_fix_patch.py tools/cfdata_speed_target_fix_patch.py
+          python3 -m py_compile tools/cfdata_custom_patch.py tools/cfdata_nsb_patch.py tools/cfdata_nsb_field_fix_patch.py tools/cfdata_speed_target_fix_patch.py tools/cfdata_v45_ui_history_patch.py
           python3 tools/cfdata_custom_patch.py
           python3 tools/cfdata_nsb_patch.py
           python3 tools/cfdata_nsb_field_fix_patch.py
           python3 tools/cfdata_speed_target_fix_patch.py
+          python3 tools/cfdata_v45_ui_history_patch.py
           gofmt -w combined_refactor/utils.go combined_refactor/tasks_nsb.go combined_refactor/protocol.go combined_refactor/server.go combined_refactor/cli.go
 
       - name: Download CA certificates
