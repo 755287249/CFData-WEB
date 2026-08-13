@@ -186,11 +186,63 @@ func isNSBPortHeader(name string) bool {
 	}
 }
 
+// parseNSBCIDRLine turns a CIDR-only input line into concrete random IP endpoints.
+// IPv4 samples every /24, IPv6 samples every /48. /32 and /128 stay as one concrete IP.
+func parseNSBCIDRLine(line string, fallbackPort int) []nsbEndpoint {
+	line = strings.TrimSpace(strings.TrimPrefix(line, "\ufeff"))
+	if line == "" {
+		return nil
+	}
+
+	if comment := strings.Index(line, "#"); comment >= 0 {
+		line = strings.TrimSpace(line[:comment])
+	}
+	fields := strings.Fields(line)
+	if len(fields) == 0 || len(fields) > 2 {
+		return nil
+	}
+
+	cidr := cleanNSBToken(fields[0])
+	_, ipNet, err := net.ParseCIDR(cidr)
+	if err != nil || ipNet == nil {
+		return nil
+	}
+
+	port := fallbackPort
+	if len(fields) == 2 {
+		parsedPort, ok := parsePort(fields[1])
+		if !ok {
+			return nil
+		}
+		port = parsedPort
+	}
+
+	var ips []string
+	if ipNet.IP.To4() != nil {
+		ips = getRandomIPv4sN([]string{cidr}, officialIPv4SamplesPer24)
+	} else {
+		ips = getRandomIPv6sN([]string{cidr}, officialIPv6SamplesPer48)
+	}
+
+	endpoints := make([]nsbEndpoint, 0, len(ips))
+	for i, ip := range ips {
+		endpoints = append(endpoints, nsbEndpoint{host: ip, port: port, pos: i})
+	}
+	return endpoints
+}
+
 func parseNSBLine(line string, fallbackPort int) []nsbEndpoint {
 	line = strings.TrimSpace(strings.TrimPrefix(line, "\ufeff"))
 	if line == "" {
 		return nil
 	}
+
+	// CIDR must be handled before the generic IPv6 parser, otherwise
+	// "2606:4700:52::/48" would be misread as the base IP "2606:4700:52::".
+	if endpoints := parseNSBCIDRLine(line, fallbackPort); len(endpoints) > 0 {
+		return endpoints
+	}
+
 	var endpoints []nsbEndpoint
 	if ep, ok := parseNSBFieldsAsCSV(line, fallbackPort); ok {
 		endpoints = append(endpoints, ep)
