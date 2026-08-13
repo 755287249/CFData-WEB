@@ -1,4 +1,4 @@
-# CFData-Web
+# CFData-Web基于原版修改重新编译（号段扫库增强）
 
 CFData-Web 是一个基于 Go 的 Cloudflare IP 测试与筛选工具，提供本地 Web 与 CLI 两种使用方式，支持官方 IP 段扫描、非标目标测试、测速、结果筛选、导出和 GitHub 上传。
 
