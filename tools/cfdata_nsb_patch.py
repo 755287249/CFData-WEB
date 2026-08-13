@@ -1123,7 +1123,7 @@ if "&& !smartCIDRSpeedDone" not in go:
         "网段智能测速完成后跳过旧测速流程",
     )
 
-if "10次最优兜底" not in go:
+if "10轮后取最高速度兜底" not in go:
     raise SystemExit("[nsb-patch] V4速度兜底逻辑没有成功写入")
 
 if "completionMessage = fmt.Sprintf(\"网段智能测速完成" not in go:
