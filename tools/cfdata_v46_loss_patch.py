@@ -93,6 +93,25 @@ if old_sig in go:
 elif new_sig not in go:
     raise SystemExit("[v4.6-loss] runNSBTask 签名不匹配")
 
+# V4 新增的自适应网段补扫 helper 也会调用 scanNSBEntry。
+# lossLimit 必须继续传入 helper；否则 helper 内引用 lossLimit 会编译报 undefined。
+old_adaptive_sig = """func runNSBAdaptiveScanBatch(ctx context.Context, session *appSession, entries []nsbAdaptiveEntry, maxThreads, fallbackPort int, enableTLS bool, delay int, targetDC string, compact bool, scanMode string, label string) ([]iptestResult, bool) {"""
+new_adaptive_sig = """func runNSBAdaptiveScanBatch(ctx context.Context, session *appSession, entries []nsbAdaptiveEntry, maxThreads, fallbackPort int, enableTLS bool, delay int, lossLimit float64, targetDC string, compact bool, scanMode string, label string) ([]iptestResult, bool) {"""
+if old_adaptive_sig in go:
+    go = go.replace(old_adaptive_sig, new_adaptive_sig, 1)
+    changed.append("自适应网段补扫接收最大丢包率")
+elif new_adaptive_sig not in go:
+    raise SystemExit("[v4.6-loss] runNSBAdaptiveScanBatch 签名不匹配")
+
+old_adaptive_call = "runNSBAdaptiveScanBatch(ctx, session, entries, maxThreads, fallbackPort, enableTLS, delay, targetDC, compact, scanMode,"
+new_adaptive_call = "runNSBAdaptiveScanBatch(ctx, session, entries, maxThreads, fallbackPort, enableTLS, delay, lossLimit, targetDC, compact, scanMode,"
+adaptive_call_count = go.count(old_adaptive_call)
+if adaptive_call_count:
+    go = go.replace(old_adaptive_call, new_adaptive_call)
+    changed.append(f"自适应补扫传递最大丢包率 x{adaptive_call_count}")
+elif new_adaptive_call not in go:
+    raise SystemExit("[v4.6-loss] 找不到 runNSBAdaptiveScanBatch 调用")
+
 old_scan_sig = '''func scanNSBEntry(ctx context.Context, item string, fallbackPort int, enableTLS bool, delay int, targetDC string, inputIndex int) (*iptestResult, *nsbFailureRecord) {'''
 new_scan_sig = '''func scanNSBEntry(ctx context.Context, item string, fallbackPort int, enableTLS bool, delay int, lossLimit float64, targetDC string, inputIndex int) (*iptestResult, *nsbFailureRecord) {'''
 if old_scan_sig in go:
