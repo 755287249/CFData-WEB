@@ -8,12 +8,14 @@ TASKS = ROOT / "combined_refactor" / "tasks_nsb.go"
 UTILS = ROOT / "combined_refactor" / "utils.go"
 PROTOCOL = ROOT / "combined_refactor" / "protocol.go"
 SERVER = ROOT / "combined_refactor" / "server.go"
+CLI = ROOT / "combined_refactor" / "cli.go"
 
 html = INDEX.read_text(encoding="utf-8")
 go = TASKS.read_text(encoding="utf-8")
 utils = UTILS.read_text(encoding="utf-8")
 protocol = PROTOCOL.read_text(encoding="utf-8")
 server = SERVER.read_text(encoding="utf-8")
+cli = CLI.read_text(encoding="utf-8")
 changed = []
 
 
@@ -63,6 +65,14 @@ def s_replace(old, new, name, count=1):
     if old not in server:
         raise SystemExit(f"[nsb-patch] server.go 找不到目标片段: {name}")
     server = server.replace(old, new, count)
+    changed.append(name)
+
+
+def c_replace(old, new, name, count=1):
+    global cli
+    if old not in cli:
+        raise SystemExit(f"[nsb-patch] cli.go 找不到目标片段: {name}")
+    cli = cli.replace(old, new, count)
     changed.append(name)
 
 
@@ -627,6 +637,16 @@ if '"sync"' not in utils:
         "utils加入sync导入",
     )
 
+
+# CLI 仍走原有参数体系；新增的 CIDR 首轮随机数在 CLI 下使用默认 4，
+# 避免 runNSBTask 新签名导致 cli.go 编译失败。
+if "cfg.resultLimit, 4, cfg.nsbDC" not in cli:
+    c_replace(
+        "cfg.enableTLS, cfg.delay, cfg.resultLimit, cfg.nsbDC, cfg.nsbSpeedMin",
+        "cfg.enableTLS, cfg.delay, cfg.resultLimit, 4, cfg.nsbDC, cfg.nsbSpeedMin",
+        "CLI传递默认CIDR首轮随机数",
+    )
+
 if "func readIPsWithFallbackPortNSBSamples(" not in utils:
     u_replace(
         '''// parseNSBCIDRLine turns a CIDR-only input line into concrete random IP endpoints.\n''',
@@ -1139,6 +1159,7 @@ TASKS.write_text(go, encoding="utf-8")
 UTILS.write_text(utils, encoding="utf-8")
 PROTOCOL.write_text(protocol, encoding="utf-8")
 SERVER.write_text(server, encoding="utf-8")
+CLI.write_text(cli, encoding="utf-8")
 
 print("[nsb-patch] 已应用:")
 for item in changed:
