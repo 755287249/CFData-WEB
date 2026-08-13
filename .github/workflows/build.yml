@@ -6,7 +6,7 @@ on:
       version:
         description: "Version label"
         required: false
-        default: "custom-v2"
+        default: "custom-v3-nsb"
         type: string
 
   push:
@@ -15,6 +15,7 @@ on:
     paths:
       - "combined_refactor/**"
       - "tools/cfdata_custom_patch.py"
+      - "tools/cfdata_nsb_patch.py"
       - ".github/workflows/build.yml"
 
 permissions:
@@ -49,9 +50,15 @@ jobs:
 
       - name: Apply custom CFData patches
         shell: bash
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+          LANG: "C.UTF-8"
+          LC_ALL: "C.UTF-8"
         run: |
           python3 tools/cfdata_custom_patch.py
-          gofmt -w combined_refactor/utils.go
+          python3 tools/cfdata_nsb_patch.py
+          gofmt -w combined_refactor/utils.go combined_refactor/tasks_nsb.go
 
       - name: Download CA certificates
         shell: bash
