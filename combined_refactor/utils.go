@@ -541,25 +541,57 @@ func randomIPFromCIDR(subnet string) (string, bool) {
 	return randomIP.String(), true
 }
 
+// 官方扫库每个号段随机采样数量。
+// 想调强度时只改这里：1=原版，4=均衡，8/16=更深但更慢。
+const (
+	officialIPv4SamplesPer24 = 4
+	officialIPv6SamplesPer48 = 4
+)
+
 func getRandomIPv4s(ipList []string) []string {
-	var randomIPs []string
+	return getRandomIPv4sN(ipList, officialIPv4SamplesPer24)
+}
+
+func getRandomIPv4sN(ipList []string, per24 int) []string {
+	if per24 < 1 {
+		per24 = 1
+	}
+
+	seen := make(map[string]bool)
+	var result []string
+
 	for _, subnet := range ipList {
 		subnets := expandCIDRTo24s(subnet)
 		if subnets == nil {
 			continue
 		}
+
 		for _, cidr := range subnets {
-			randomIP, ok := randomIPFromCIDR(cidr)
-			if !ok {
-				continue
+			for i := 0; i < per24; i++ {
+				for retry := 0; retry < 16; retry++ {
+					ip, ok := randomIPFromCIDR(cidr)
+					if !ok {
+						break
+					}
+
+					parsed := net.ParseIP(ip)
+					if parsed == nil || parsed.To4() == nil {
+						continue
+					}
+
+					if seen[ip] {
+						continue
+					}
+
+					seen[ip] = true
+					result = append(result, ip)
+					break
+				}
 			}
-			if net.ParseIP(randomIP).To4() == nil {
-				continue
-			}
-			randomIPs = append(randomIPs, randomIP)
 		}
 	}
-	return randomIPs
+
+	return result
 }
 
 const maxIPv6SubnetExpansion = 1 << 16
@@ -609,23 +641,47 @@ func expandCIDRTo48s(subnet string) []string {
 }
 
 func getRandomIPv6s(ipList []string) []string {
-	var randomIPs []string
+	return getRandomIPv6sN(ipList, officialIPv6SamplesPer48)
+}
+
+func getRandomIPv6sN(ipList []string, per48 int) []string {
+	if per48 < 1 {
+		per48 = 1
+	}
+
+	seen := make(map[string]bool)
+	var result []string
+
 	for _, subnet := range ipList {
 		subnets := expandCIDRTo48s(subnet)
 		if subnets == nil {
 			continue
 		}
+
 		for _, cidr := range subnets {
-			randomIP, ok := randomIPFromCIDR(cidr)
-			if !ok {
-				continue
+			for i := 0; i < per48; i++ {
+				for retry := 0; retry < 16; retry++ {
+					ip, ok := randomIPFromCIDR(cidr)
+					if !ok {
+						break
+					}
+
+					parsed := net.ParseIP(ip)
+					if parsed == nil || parsed.To4() != nil {
+						continue
+					}
+
+					if seen[ip] {
+						continue
+					}
+
+					seen[ip] = true
+					result = append(result, ip)
+					break
+				}
 			}
-			parsed := net.ParseIP(randomIP)
-			if parsed == nil || parsed.To4() != nil {
-				continue
-			}
-			randomIPs = append(randomIPs, randomIP)
 		}
 	}
-	return randomIPs
+
+	return result
 }
